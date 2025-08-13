@@ -6,10 +6,11 @@ struct Model{T, V}
     z::V
     ν::V
     κ::V
+    r::V
     canonical::Bool
 end
 
-function Model(S, v₀, N, Δt, z, ν, κ; canonical=false)
+function Model(S, v₀, N, Δt, z, ν, κ, r; canonical=false)
     nz = length(z)
     τ_A = 1/S
     H = z[end]
@@ -43,5 +44,5 @@ function Model(S, v₀, N, Δt, z, ν, κ; canonical=false)
     # make sure z, ν, and κ are same type
     z = collect(z)
 
-    return Model(S, N, v₀, Δt, z, ν, κ, canonical)
+    return Model(S, N, v₀, Δt, z, ν, κ,r, canonical)
 end

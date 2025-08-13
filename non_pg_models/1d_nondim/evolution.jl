@@ -54,6 +54,7 @@ function build_linear_system(model::Model)
     ν = model.ν
     κ = model.κ
     z = model.z
+    r = model.r
     Δt = model.Δt
     canonical = model.canonical
     v₀ = model.v₀
@@ -74,46 +75,53 @@ function build_linear_system(model::Model)
         # dzz stencil
         fd_zz = mkfdstencil(z[j-1:j+1], z[j], 2)
 
-        # 1st eqtn: u_t = v - Px + S*b + (ν*u_z)_z
+        # 1st eqtn: u_t = v - Px + S*b + (ν*u_z)_z -r*u
         row = imap[1, j]
         # time derivative
         add_to_matrix!(LHS, row, row, 1/Δt)
         add_to_matrix!(RHS, row, row, 1/Δt)
-        # first term RHS
+        # first term RHS: v
         add_to_CN_matrices!(LHS, RHS, row, imap[2, j], 1)
-        # second term RHS
+        # second term RHS: -Px
         add_to_CN_matrices!(LHS, RHS, row, ndof, -1)
-        # third term RHS
+        # third term RHS: S*b
         add_to_CN_matrices!(LHS, RHS, row, imap[3, j], S)
-        # fourth term: dz(ν*dz(u))) = dz(ν)*dz(u) + ν*dzz(u)
+        # fourth term RHS: (ν*u_z)_z = ν_z*u_z + ν*u_zz
         add_to_CN_matrices!(LHS, RHS, row, imap[1, j-1], ν_z*fd_z[1] + ν[j]*fd_zz[1])
         add_to_CN_matrices!(LHS, RHS, row, imap[1, j],   ν_z*fd_z[2] + ν[j]*fd_zz[2])
         add_to_CN_matrices!(LHS, RHS, row, imap[1, j+1], ν_z*fd_z[3] + ν[j]*fd_zz[3])
-
-        # 2nd eqtn: v_t = -u + (ν*v_z)_z
+        # fifth term RHS: -r*u
+        add_to_CN_matrices!(LHS, RHS, row, imap[1, j], -r[j])
+        
+        # 2nd eqtn: v_t = -u + (ν*v_z)_z - r*v
         row = imap[2, j]
         # time derivative
         add_to_matrix!(LHS, row, row, 1/Δt)
         add_to_matrix!(RHS, row, row, 1/Δt)
-        # first term:
+        # first term RHS: -u
         add_to_CN_matrices!(LHS, RHS, row, imap[1, j], -1)
-        # second term: dz(ν*dz(v))) = dz(ν)*dz(v) + ν*dzz(v)
+        # second term RHS: (ν*v_z)_z = ν_z*v_z + ν*v_zz
         add_to_CN_matrices!(LHS, RHS, row, imap[2, j-1], ν_z*fd_z[1] + ν[j]*fd_zz[1])
         add_to_CN_matrices!(LHS, RHS, row, imap[2, j],   ν_z*fd_z[2] + ν[j]*fd_zz[2])
         add_to_CN_matrices!(LHS, RHS, row, imap[2, j+1], ν_z*fd_z[3] + ν[j]*fd_zz[3])
+        # third term RHS: -r*v
+        add_to_CN_matrices!(LHS, RHS, row, imap[2, j], -r[j])
+        # rhs[row] = -r[j]*v₀ # not needed?
 
-        # 3rd eqtn: b_t = -u + [κ*(1 + b_z)]_z
+        # 3rd eqtn: b_t = -u + [κ*(N² + b_z)]_z - r*b
         row = imap[3, j]
         # time derivative
         add_to_matrix!(LHS, row, row, 1/Δt)
         add_to_matrix!(RHS, row, row, 1/Δt)
-        # first term
+        # first term RHS: -u
         add_to_CN_matrices!(LHS, RHS, row, imap[1, j], -1)
-        # second term: dz(κ(N^2 + dz(b))) = N^2*dz(κ) + dz(κ)*dz(b) + κ*dzz(b)
+        # second term RHS: [κ*(N² + b_z)]_z = N²κ_z + κ_z*b_z + κ*b_zz
         add_to_CN_matrices!(LHS, RHS, row, imap[3, j-1], (κ_z*fd_z[1] + κ[j]*fd_zz[1]))
         add_to_CN_matrices!(LHS, RHS, row, imap[3, j],   (κ_z*fd_z[2] + κ[j]*fd_zz[2]))
         add_to_CN_matrices!(LHS, RHS, row, imap[3, j+1], (κ_z*fd_z[3] + κ[j]*fd_zz[3]))
         rhs[row] = N^2*κ_z
+        # third term RHS: -r*b
+        # add_to_CN_matrices!(LHS, RHS, row, imap[3, j], -r)
     end
 
     # Boundary Conditions: Bottom

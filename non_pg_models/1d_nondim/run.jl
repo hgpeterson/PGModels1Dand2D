@@ -8,8 +8,8 @@ if !isdir(out_dir)
 end
 
 include("model.jl")
-include("evolution.jl")
 include("plotting.jl")
+include("evolution.jl")
 
 ################################################################################
 # set up model
@@ -53,12 +53,17 @@ h = 1
 κ = @. κ0 + κ1*exp(-z/h)
 
 # for BT12 mixing scheme
-BT12 = true
-BT12_debug = true
+BT12 = false
+BT12_debug = false
 κ_b = 10*κ0
 
+# Rayleigh drag
+r0 = 1
+h = 10
+r = @. r0*exp(-z/h)
+
 # store in model
-model = Model(S, v₀, N, Δt, z, ν, κ; canonical)
+model = Model(S, v₀, N, Δt, z, ν, κ, r; canonical)
 
 ################################################################################
 # run single integration
@@ -70,7 +75,6 @@ u, v, b, Px = evolve(model; t_final=5*τ_A, t_save=τ_A)
 # plots
 ################################################################################
 
-path = ""
 i_saves = 0:1:5
 dfiles = [joinpath(out_dir, @sprintf("checkpoint%03d.jld2", i)) for i in i_saves]
 profile_plot(dfiles)
